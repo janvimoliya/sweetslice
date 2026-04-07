@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Berry cake</title>
+  <desc id="desc">Stylized berry cake illustration for home page slider.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffe5ea"/>
+      <stop offset="100%" stop-color="#ffd2d8"/>
+    </linearGradient>
+    <linearGradient id="cake" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffb3c1"/>
+      <stop offset="100%" stop-color="#ff8ba0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" fill="url(#bg)"/>
+  <ellipse cx="600" cy="760" rx="370" ry="70" fill="#e9a7b4" opacity="0.4"/>
+  <rect x="300" y="350" width="600" height="320" rx="36" fill="url(#cake)"/>
+  <rect x="320" y="410" width="560" height="26" rx="13" fill="#fff1f4"/>
+  <rect x="320" y="490" width="560" height="26" rx="13" fill="#fff1f4"/>
+  <path d="M300 350 C390 280, 810 280, 900 350" fill="#fff0c8"/>
+  <circle cx="450" cy="300" r="34" fill="#e6425a"/>
+  <circle cx="600" cy="270" r="36" fill="#e6425a"/>
+  <circle cx="750" cy="300" r="34" fill="#e6425a"/>
+</svg>

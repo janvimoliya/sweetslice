@@ -1,0 +1,86 @@
+.admin-profile-page {
+  padding: 1.5rem 0;
+}
+
+.admin-profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-profile-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.admin-profile-card {
+  background: #ffffff;
+  border: 1px solid #ececec;
+  border-radius: 14px;
+  padding: 1.25rem;
+}
+
+.admin-profile-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.admin-profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.admin-profile-page .form-label {
+  color: #5a3b2a;
+  font-weight: 700;
+  margin: 0;
+}
+
+.admin-profile-page .form-control {
+  border-radius: 10px;
+  border: 1px solid #e2d2c3;
+  background: #faf6f2;
+  color: #2f241e;
+  font-weight: 600;
+  min-height: 46px;
+}
+
+.admin-profile-page .form-control:read-only {
+  cursor: default;
+  box-shadow: none;
+}
+
+.admin-profile-page .role-input {
+  letter-spacing: 0.08em;
+}
+
+.admin-profile-submit-wrap {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 0.25rem;
+}
+
+.admin-profile-submit-wrap .btn {
+  min-width: 170px;
+}
+
+@media (max-width: 768px) {
+  .admin-profile-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-profile-form {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-profile-submit-wrap .btn {
+    width: 100%;
+  }
+}

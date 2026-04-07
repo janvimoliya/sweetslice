@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-labelledby="title desc">
+  <title id="title">Cake image placeholder</title>
+  <desc id="desc">A decorative cake placeholder shown when product photo is unavailable.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fff4f4"/>
+      <stop offset="100%" stop-color="#ffe3d2"/>
+    </linearGradient>
+    <linearGradient id="cake" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffccd6"/>
+      <stop offset="100%" stop-color="#ff9cae"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <circle cx="120" cy="110" r="70" fill="#ffd6de" opacity="0.6"/>
+  <circle cx="690" cy="80" r="95" fill="#ffd9bd" opacity="0.5"/>
+
+  <g transform="translate(180,120)">
+    <rect x="40" y="220" width="360" height="180" rx="22" fill="url(#cake)"/>
+    <rect x="60" y="260" width="320" height="28" rx="14" fill="#fff1f4"/>
+    <rect x="60" y="310" width="320" height="28" rx="14" fill="#fff1f4"/>
+    <path d="M40 220 C120 170, 320 170, 400 220" fill="#ffe8b5"/>
+    <circle cx="220" cy="165" r="30" fill="#f45b72"/>
+    <path d="M220 132 C210 112, 230 112, 220 132" fill="#54b164"/>
+  </g>
+
+  <text x="400" y="540" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="36" fill="#c94457">
+    SweetSlice
+  </text>
+</svg>

@@ -1,0 +1,343 @@
+/* ====== PROFILE PAGE - USER DASHBOARD ====== */
+.profile-page-wrapper {
+    width: 100%;
+    min-height: 100vh;
+    background: linear-gradient(to bottom, #f5f5f5 0%, #ffffff 100%);
+    padding: 40px 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.profile-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.profile-header {
+    text-align: center;
+    margin-bottom: 50px;
+}
+
+.profile-header h1 {
+    font-size: 40px;
+    font-weight: 800;
+    color: #1a1a1a;
+    margin: 0 0 10px 0;
+}
+
+.profile-header p {
+    font-size: 16px;
+    color: #666;
+    margin: 0;
+}
+
+.profile-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 30px;
+}
+
+.profile-sidebar {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    height: fit-content;
+    position: sticky;
+    top: 20px;
+}
+
+.user-card {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 30px;
+}
+
+.user-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--cocoa-900) 0%, var(--brand-800) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    margin: 0 auto 15px;
+}
+
+.user-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 5px 0;
+}
+
+.user-email {
+    font-size: 13px;
+    color: #999;
+    margin: 0;
+}
+
+.sidebar-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.menu-item {
+    padding: 12px 16px;
+    background: #f5f5f5;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    color: #666;
+    font-weight: 600;
+}
+
+.menu-item:hover,
+.menu-item.active {
+    background: var(--cocoa-900);
+    color: white;
+    border-color: var(--brand-800);
+}
+
+.logout-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--brand-800);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-top: 30px;
+    transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+    background: #c82333;
+}
+
+.profile-content {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.content-section {
+    margin-bottom: 30px;
+}
+
+.content-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 20px 0;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--cocoa-900);
+}
+
+.profile-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-input {
+    padding: 12px 14px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--cocoa-900);
+    box-shadow: 0 0 0 3px rgba(201, 156, 110, 0.1);
+}
+
+.form-group.full {
+    grid-column: 1 / -1;
+}
+
+.edit-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--cocoa-900);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-top: 20px;
+    transition: all 0.3s ease;
+}
+
+.edit-btn:hover {
+    background: var(--brand-800);
+}
+
+.orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.order-card {
+    background: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.order-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.order-id {
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.order-status {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-processing {
+    background: #cfe2ff;
+    color: #084298;
+}
+
+.status-shipped {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.status-delivered {
+    background: #d4edda;
+    color: #155724;
+}
+
+.order-info {
+    display: grid;
+    grid-template-columns: auto auto auto;
+    gap: 30px;
+    font-size: 13px;
+    color: #666;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #333;
+}
+
+.no-data {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+}
+
+@media (max-width: 1024px) {
+    .profile-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-sidebar {
+        position: static;
+    }
+
+    .profile-form {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .profile-page-wrapper {
+        padding: 20px 15px;
+    }
+
+    .profile-header h1 {
+        font-size: 28px;
+    }
+
+    .profile-sidebar {
+        padding: 20px;
+    }
+
+    .profile-content {
+        padding: 20px;
+    }
+
+    .order-info {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+}
+
+@media (max-width: 576px) {
+    .profile-page-wrapper {
+        padding: 15px 12px;
+    }
+
+    .profile-header h1 {
+        font-size: 24px;
+    }
+
+    .profile-sidebar {
+        padding: 15px;
+    }
+
+    .user-card {
+        padding-bottom: 20px;
+        margin-bottom: 20px;
+    }
+
+    .profile-content {
+        padding: 15px;
+    }
+
+    .content-title {
+        font-size: 18px;
+    }
+}

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Chocolate cake</title>
+  <desc id="desc">Stylized chocolate cake illustration for home page slider.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f7e7db"/>
+      <stop offset="100%" stop-color="#efcfba"/>
+    </linearGradient>
+    <linearGradient id="cake" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8d5a43"/>
+      <stop offset="100%" stop-color="#6e402e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" fill="url(#bg)"/>
+  <ellipse cx="600" cy="760" rx="370" ry="70" fill="#c6997f" opacity="0.38"/>
+  <rect x="290" y="360" width="620" height="310" rx="34" fill="url(#cake)"/>
+  <rect x="320" y="425" width="560" height="20" rx="10" fill="#e8c8b6" opacity="0.9"/>
+  <rect x="320" y="500" width="560" height="20" rx="10" fill="#e8c8b6" opacity="0.9"/>
+  <path d="M290 360 C390 270, 810 270, 910 360" fill="#4f2d20"/>
+  <path d="M390 320 C390 380, 430 380, 430 320" fill="#3f2218"/>
+  <path d="M570 300 C570 365, 610 365, 610 300" fill="#3f2218"/>
+  <path d="M750 320 C750 380, 790 380, 790 320" fill="#3f2218"/>
+</svg>

@@ -1,0 +1,25 @@
+.admin-login-page {
+  min-height: 70vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1rem;
+}
+
+.admin-login-card {
+  width: 100%;
+  max-width: 460px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 2rem;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  border: 1px solid #eee;
+}
+
+.admin-login-card h2 {
+  margin-bottom: 0.25rem;
+}
+
+.admin-login-card p {
+  color: #666;
+  margin-bottom: 1rem;
+}
