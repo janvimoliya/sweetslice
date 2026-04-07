@@ -46,6 +46,7 @@ function CommonLayout({ children, theme, onToggleTheme }) {
         '/cart': 'Review your items and proceed to checkout.',
         '/wishlist': 'Save your favorite cakes for later.',
         '/profile': 'Manage your account and view your orders.',
+        '/order-success': 'Your order is confirmed and ready for tracking.',
         '/register': 'Create your account for faster checkout and rewards.',
         '/contact': 'Get in touch with our customer support team.',
         '/about': 'Learn about our story and commitment to quality.',
@@ -57,7 +58,10 @@ function CommonLayout({ children, theme, onToggleTheme }) {
     }
 
     const currentSubtitle =
-        routeSubtitles[pathname] || 'Explore our ecommerce experience and services.'
+        routeSubtitles[pathname] ||
+        (pathname.startsWith('/order-success/')
+            ? routeSubtitles['/order-success']
+            : 'Explore our ecommerce experience and services.')
 
     const handleHeaderSearchSubmit = (event) => {
         event.preventDefault()

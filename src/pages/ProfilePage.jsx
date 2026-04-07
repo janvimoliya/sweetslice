@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { rules, useFormValidation } from "../validation/formValidation";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -8,6 +8,7 @@ import "../styles/ProfilePage.css";
 
 function ProfilePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const apiBaseUrl = "http://localhost:5000";
   const [userProfile, setUserProfile] = useState(null)
   const [wishlistCount, setWishlistCount] = useState(0)
@@ -17,7 +18,9 @@ function ProfilePage() {
   const [ordersError, setOrdersError] = useState("")
   const [ordersLastSyncedAt, setOrdersLastSyncedAt] = useState("")
   const [isEditing, setIsEditing] = useState(false)
-  const [activeTab, setActiveTab] = useState("profile")
+  const [activeTab, setActiveTab] = useState(() => (
+    new URLSearchParams(location.search).get("tab") === "orders" ? "orders" : "profile"
+  ))
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitMessage, setSubmitMessage] = useState("")
   const [submitError, setSubmitError] = useState("")
@@ -330,6 +333,23 @@ function ProfilePage() {
     navigate("/login");
   };
 
+  useEffect(() => {
+    const queryTab = new URLSearchParams(location.search).get("tab");
+    if (queryTab === "orders") {
+      setActiveTab("orders");
+      return;
+    }
+
+    if (queryTab === "profile" || !queryTab) {
+      setActiveTab("profile");
+    }
+  }, [location.search]);
+
+  const handleTabSwitch = (tabKey) => {
+    setActiveTab(tabKey);
+    navigate(`/profile?tab=${tabKey}`, { replace: true });
+  };
+
   const formatCurrency = (value) => {
     const numeric = Number(value || 0);
     return `INR ${Number.isFinite(numeric)
@@ -502,14 +522,14 @@ function ProfilePage() {
           <button
             type="button"
             className={`profile-tab-btn ${activeTab === "profile" ? "active" : ""}`}
-            onClick={() => setActiveTab("profile")}
+            onClick={() => handleTabSwitch("profile")}
           >
             Profile Info
           </button>
           <button
             type="button"
             className={`profile-tab-btn ${activeTab === "orders" ? "active" : ""}`}
-            onClick={() => setActiveTab("orders")}
+            onClick={() => handleTabSwitch("orders")}
           >
             Order History
           </button>

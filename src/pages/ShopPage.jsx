@@ -18,6 +18,7 @@ function ShopPage() {
   const [sortBy, setSortBy] = useState("name");
   const [currentPage, setCurrentPage] = useState(1);
   const [activeReviewProduct, setActiveReviewProduct] = useState(null);
+  const [toast, setToast] = useState(null);
   const { search, pathname } = useLocation();
   const navigate = useNavigate();
   const { addToCart } = useCart();
@@ -59,6 +60,28 @@ function ShopPage() {
     }
 
     return localFallbackImage;
+  };
+
+  const getStockMeta = (product) => {
+    const quantity = Number(product?.quantity ?? -1);
+    const hasExplicitStock = Number.isFinite(quantity) && quantity >= 0;
+    const isOutOfStock = product?.inStock === false || (hasExplicitStock && quantity === 0);
+    const isLowStock = hasExplicitStock && quantity > 0 && quantity <= 5;
+
+    if (isOutOfStock) {
+      return { label: "Out of Stock", className: "stock-out", canBuy: false };
+    }
+
+    if (isLowStock) {
+      return { label: `Only ${quantity} left`, className: "stock-low", canBuy: true };
+    }
+
+    return { label: "In Stock", className: "stock-ok", canBuy: true };
+  };
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    window.setTimeout(() => setToast(null), 2200);
   };
 
   useEffect(() => {
@@ -142,7 +165,7 @@ function ShopPage() {
     }
 
     addToCart(product, 1);
-    alert(`${product.name} added to cart!`);
+    showToast(`${product.name} added to cart`);
   };
 
   const toggleWishlist = async (product) => {
@@ -271,16 +294,26 @@ function ShopPage() {
                   }}
                 />
                 <div className="product-overlay">
+                  {(() => {
+                    const stockMeta = getStockMeta(product);
+                    return (
                   <button
                     className="shop-overlay-cart-btn"
+                    disabled={!stockMeta.canBuy}
                     onClick={() => handleAddToCart(product)}
                   >
-                    Add to Cart
+                    {stockMeta.canBuy ? "Add to Cart" : "Unavailable"}
                   </button>
+                    );
+                  })()}
                 </div>
               </div>
 
               <div className="product-info">
+                {(() => {
+                  const stockMeta = getStockMeta(product);
+                  return (
+                    <>
                 <div className="d-flex justify-content-between align-items-start mb-2">
                   <h5 className="product-name">{product.name}</h5>
                   <button
@@ -307,6 +340,12 @@ function ShopPage() {
                   {product.description}
                 </p>
 
+                <div className="product-trust-row">
+                  <span className={`product-trust-pill ${stockMeta.className}`}>{stockMeta.label}</span>
+                  <span className="product-trust-pill eta-pill">ETA 60-120 min</span>
+                  <span className="product-trust-pill verified-pill">Verified Reviews</span>
+                </div>
+
                 <div className="d-flex justify-content-between align-items-center">
                   <span className="product-price fw-bold">₹{product.price}</span>
                   <span className="product-rating">
@@ -321,6 +360,9 @@ function ShopPage() {
                 >
                   View Reviews
                 </button>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           ))
@@ -387,6 +429,12 @@ function ShopPage() {
           }
         }}
       />
+
+      {toast && (
+        <div className={`app-toast ${toast.type === "error" ? "is-error" : "is-success"}`} role="status" aria-live="polite">
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,0 +1,118 @@
+.order-success-page {
+  min-height: 70vh;
+  padding: 34px 16px 60px;
+  background: linear-gradient(180deg, #fffaf5 0%, #f8f1ea 100%);
+}
+
+.order-success-shell {
+  max-width: 860px;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid #edded3;
+  border-radius: 18px;
+  padding: 34px 28px;
+  box-shadow: 0 20px 42px rgba(65, 37, 24, 0.12);
+}
+
+.order-success-icon {
+  width: 74px;
+  height: 74px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: #d7f3e2;
+  color: #1f8f4e;
+  font-size: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+}
+
+.order-success-shell h2 {
+  text-align: center;
+  margin: 0;
+  color: #2e1c14;
+}
+
+.order-success-subtitle {
+  text-align: center;
+  color: #6a5950;
+  margin: 10px auto 22px;
+  max-width: 620px;
+}
+
+.order-success-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.order-success-meta > div {
+  background: #fdf8f4;
+  border: 1px solid #efdfd3;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.order-success-meta label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #896c5d;
+  font-weight: 700;
+}
+
+.order-success-meta strong {
+  color: #2f1c14;
+}
+
+.order-success-items {
+  margin-top: 22px;
+  border: 1px solid #efdfd3;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.order-success-items h4 {
+  margin: 0 0 12px;
+  color: #2f1c14;
+}
+
+.order-success-item-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f1e6de;
+  color: #5f4a40;
+}
+
+.order-success-item-row:last-child {
+  border-bottom: none;
+}
+
+.order-success-actions {
+  margin-top: 22px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.order-success-loading,
+.order-success-error {
+  text-align: center;
+  color: #6d5f57;
+}
+
+.status-completed {
+  color: #238654;
+}
+
+.status-pending,
+.status-failed {
+  color: #a54a2c;
+}

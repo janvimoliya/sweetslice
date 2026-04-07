@@ -1,6 +1,80 @@
+import crypto from 'node:crypto';
+import process from 'node:process';
 import Order from '../model/Order.js';
 import Product from '../model/Product.js';
 import Offer from '../model/Offer.js';
+import User from '../model/User.js';
+import { sendVerificationEmail } from '../config/mailer.js';
+
+const PAYMENT_SECRET = process.env.PAYMENT_GATEWAY_SECRET || process.env.JWT_SECRET || 'sweetslice-payment-secret';
+
+const buildOrderNumber = () => {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).slice(2, 7).toUpperCase();
+  return `SS-${timestamp}-${random}`;
+};
+
+const buildPaymentSignature = ({ orderId, paymentSessionId, status }) =>
+  crypto
+    .createHmac('sha256', PAYMENT_SECRET)
+    .update(`${orderId}:${paymentSessionId}:${status}`)
+    .digest('hex');
+
+const sendOrderConfirmationEmail = async (order) => {
+  try {
+    const user = await User.findById(order.userId).select('email fullName');
+    const toEmail = String(user?.email || '').trim();
+
+    if (!toEmail) {
+      return;
+    }
+
+    const rows = (order.items || [])
+      .map((item) => {
+        const qty = Number(item.quantity || 0);
+        const unit = Number(item.price || 0);
+        const line = (qty * unit).toFixed(2);
+        return `<tr><td style="padding:8px;border-bottom:1px solid #eee;">${item.name || 'Cake'}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${qty}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">INR ${unit.toFixed(2)}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">INR ${line}</td></tr>`;
+      })
+      .join('');
+
+    const html = `
+      <div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.5;color:#2b1a13;max-width:720px;margin:0 auto;">
+        <h2 style="margin-bottom:8px;">SweetSlice Order Confirmation</h2>
+        <p style="margin-top:0;color:#5f4c42;">Hi ${user?.fullName || 'Customer'}, your order has been confirmed.</p>
+        <div style="background:#fff7f1;border:1px solid #f0ddd2;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
+          <p style="margin:0 0 6px 0;"><strong>Order Number:</strong> ${order.orderNumber || order._id}</p>
+          <p style="margin:0 0 6px 0;"><strong>Payment Method:</strong> ${order.paymentMethod || '-'}</p>
+          <p style="margin:0;"><strong>Order Total:</strong> INR ${Number(order.totalAmount || 0).toFixed(2)}</p>
+        </div>
+        <table style="width:100%;border-collapse:collapse;border:1px solid #eee;border-radius:10px;overflow:hidden;">
+          <thead>
+            <tr style="background:#6f4a33;color:#fff;">
+              <th style="padding:10px;text-align:left;">Item</th>
+              <th style="padding:10px;text-align:center;">Qty</th>
+              <th style="padding:10px;text-align:right;">Unit</th>
+              <th style="padding:10px;text-align:right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <p style="margin-top:14px;color:#5f4c42;">You can track this order from your profile under Order History.</p>
+      </div>
+    `;
+
+    await sendVerificationEmail({
+      toEmail,
+      subject: `Order Confirmed - ${order.orderNumber || String(order._id).slice(-8).toUpperCase()}`,
+      html,
+    });
+
+    order.confirmationEmailSentAt = new Date();
+    await order.save();
+  } catch (error) {
+    // Mail failures should not block checkout completion.
+    console.error('[Order] Confirmation email send failed:', error.message || error);
+  }
+};
 
 // Create Order
 export const createOrder = async (req, res) => {
@@ -100,9 +174,11 @@ export const createOrder = async (req, res) => {
       };
     });
 
-    const serverSubtotal = Number(trustedItems
-      .reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
-      .toFixed(2));
+    const serverSubtotal = Number(
+      trustedItems
+        .reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
+        .toFixed(2)
+    );
 
     let serverDiscount = 0;
     let resolvedCouponCode = '';
@@ -123,25 +199,28 @@ export const createOrder = async (req, res) => {
 
       const minPurchase = Number(offer.minPurchaseAmount || 0);
       if (serverSubtotal < minPurchase) {
-        return res.status(400).json({ message: `Coupon requires minimum purchase of ₹${minPurchase}` });
+        return res.status(400).json({ message: `Coupon requires minimum purchase of INR ${minPurchase}` });
       }
 
       let eligibleSubtotal = serverSubtotal;
       if (Array.isArray(offer.applicableProducts) && offer.applicableProducts.length > 0) {
         const applicableIds = new Set(offer.applicableProducts.map((id) => String(id)));
-        eligibleSubtotal = Number(trustedItems
-          .filter((item) => applicableIds.has(String(item.productId)))
-          .reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
-          .toFixed(2));
+        eligibleSubtotal = Number(
+          trustedItems
+            .filter((item) => applicableIds.has(String(item.productId)))
+            .reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
+            .toFixed(2)
+        );
 
         if (eligibleSubtotal <= 0) {
           return res.status(400).json({ message: 'Coupon is not applicable to items in this cart' });
         }
       }
 
-      serverDiscount = offer.discountType === 'fixed'
-        ? Math.min(Number(offer.discountValue || 0), eligibleSubtotal)
-        : (eligibleSubtotal * Number(offer.discountPercentage || 0)) / 100;
+      serverDiscount =
+        offer.discountType === 'fixed'
+          ? Math.min(Number(offer.discountValue || 0), eligibleSubtotal)
+          : (eligibleSubtotal * Number(offer.discountPercentage || 0)) / 100;
 
       serverDiscount = Number(serverDiscount.toFixed(2));
       resolvedCouponCode = String(offer.code || normalizedCouponCode).trim();
@@ -164,7 +243,10 @@ export const createOrder = async (req, res) => {
       });
     }
 
+    const orderNumber = buildOrderNumber();
+
     const newOrder = new Order({
+      orderNumber,
       userId,
       items: trustedItems,
       subtotalAmount: serverSubtotal,
@@ -180,16 +262,144 @@ export const createOrder = async (req, res) => {
       deliverySlot: normalizedDeliverySlot,
       status: 'pending',
       paymentStatus: 'pending',
+      paymentGateway: normalizedPaymentMethod === 'cod' ? 'manual' : 'mockpay',
     });
 
     await newOrder.save();
 
+    if (normalizedPaymentMethod === 'cod') {
+      newOrder.status = 'processing';
+      await newOrder.save();
+      await sendOrderConfirmationEmail(newOrder);
+    }
+
     res.status(201).json({
       message: 'Order created successfully',
       data: newOrder,
+      paymentRequired: normalizedPaymentMethod !== 'cod',
     });
   } catch (error) {
     res.status(500).json({ message: 'Error creating order', error: error.message });
+  }
+};
+
+export const initiateOrderPayment = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (String(order.paymentMethod || '').toLowerCase() === 'cod') {
+      return res.status(400).json({ message: 'COD orders do not require online payment' });
+    }
+
+    if (order.paymentStatus === 'completed') {
+      return res.status(400).json({ message: 'Payment already completed for this order' });
+    }
+
+    const paymentSessionId = `PAY-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+    const gatewayReference = `GW-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+    const signedToken = buildPaymentSignature({
+      orderId: String(order._id),
+      paymentSessionId,
+      status: 'initiated',
+    });
+
+    order.paymentGateway = 'mockpay';
+    order.paymentInitiatedAt = new Date();
+    order.paymentFailureReason = '';
+    await order.save();
+
+    res.status(200).json({
+      message: 'Payment initiated',
+      data: {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        amount: Number(order.totalAmount || 0),
+        currency: 'INR',
+        paymentSessionId,
+        gatewayReference,
+        signedToken,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error initiating payment', error: error.message });
+  }
+};
+
+export const verifyOrderPayment = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const {
+      paymentStatus,
+      paymentSessionId,
+      signedToken,
+      transactionId,
+      failureReason,
+    } = req.body;
+
+    const normalizedStatus = String(paymentStatus || '').toLowerCase();
+    if (!['completed', 'failed'].includes(normalizedStatus)) {
+      return res.status(400).json({ message: 'Invalid payment status. Use completed or failed.' });
+    }
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (!paymentSessionId || !signedToken) {
+      return res.status(400).json({ message: 'Payment session and signature are required' });
+    }
+
+    const expectedToken = buildPaymentSignature({
+      orderId: String(order._id),
+      paymentSessionId: String(paymentSessionId),
+      status: 'initiated',
+    });
+
+    if (expectedToken !== String(signedToken)) {
+      return res.status(400).json({ message: 'Payment signature mismatch' });
+    }
+
+    order.paymentVerifiedAt = new Date();
+
+    if (normalizedStatus === 'completed') {
+      const txId = String(transactionId || '').trim();
+      if (!txId) {
+        return res.status(400).json({ message: 'Transaction ID is required for completed payments' });
+      }
+
+      order.paymentStatus = 'completed';
+      order.paymentTransactionId = txId;
+      order.paymentFailureReason = '';
+      if (order.status === 'pending') {
+        order.status = 'processing';
+      }
+      await order.save();
+      await sendOrderConfirmationEmail(order);
+
+      return res.status(200).json({
+        message: 'Payment verified successfully',
+        data: order,
+      });
+    }
+
+    order.paymentStatus = 'failed';
+    order.paymentFailureReason = String(failureReason || 'Payment failed at gateway').trim();
+    order.paymentTransactionId = '';
+    order.status = 'pending';
+    await order.save();
+
+    return res.status(200).json({
+      message: 'Payment marked as failed. You can retry payment.',
+      data: order,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error verifying payment', error: error.message });
   }
 };
 
@@ -213,7 +423,7 @@ export const getOrdersByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const orders = await Order.find({ userId }).populate('items.productId');
+    const orders = await Order.find({ userId }).sort({ createdAt: -1 }).populate('items.productId');
 
     if (orders.length === 0) {
       return res.status(404).json({ message: 'No orders found for this user' });

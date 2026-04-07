@@ -2,6 +2,13 @@ import mongoose from 'mongoose';
 
 const orderSchema = new mongoose.Schema(
   {
+    orderNumber: {
+      type: String,
+      trim: true,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -82,9 +89,36 @@ const orderSchema = new mongoose.Schema(
       enum: ['pending', 'completed', 'failed'],
       default: 'pending',
     },
+    paymentGateway: {
+      type: String,
+      enum: ['mockpay', 'manual', 'none'],
+      default: 'none',
+    },
+    paymentTransactionId: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    paymentFailureReason: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    paymentInitiatedAt: {
+      type: Date,
+      default: null,
+    },
+    paymentVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+    confirmationEmailSentAt: {
+      type: Date,
+      default: null,
+    },
     paymentMethod: {
       type: String,
-      enum: ['credit-card', 'credit_card', 'paypal', 'bank-transfer', 'upi', 'cod'],
+      enum: ['credit-card', 'credit_card', 'paypal', 'bank-transfer', 'upi', 'cod', 'razorpay'],
     },
     wantsCustomization: {
       type: Boolean,

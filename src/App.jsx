@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 import './App.css'
 import './styles/Global.css'
+import './styles/ToastStyles.css'
 import { Route, Routes, BrowserRouter, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import CommonLayout from './components/CommonLayout'
 import HomePage from './pages/HomePage'
@@ -10,6 +13,7 @@ import ContactPage from './pages/ContactPage'
 import ShopPage from './pages/ShopPage'
 import CartPage from './pages/CartPage'
 import CheckoutPage from './pages/CheckoutPage'
+import OrderSuccessPage from './pages/OrderSuccessPage'
 import WishlistPage from './pages/WishlistPage'
 import ProfilePage from './pages/ProfilePage'
 import AboutPage from './pages/AboutPageNew'
@@ -139,6 +143,7 @@ function AppRouterContent({ theme, onToggleTheme }) {
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/order-success/:orderId" element={<OrderSuccessPage />} />
         <Route path="/wishlist" element={<WishlistPage />} />
         <Route
           path="/profile"
@@ -207,6 +212,7 @@ function App() {
         <BrowserRouter>
           <ScrollToTopOnRouteChange />
           <AppRouterContent theme={theme} onToggleTheme={handleToggleTheme} />
+          <ToastContainer />
         </BrowserRouter>
       </WishlistProvider>
     </CartProvider>

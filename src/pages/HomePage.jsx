@@ -17,6 +17,7 @@ function HomePage() {
   const location = useLocation();
   const [products, setProducts] = useState([]);
   const [activeReviewProduct, setActiveReviewProduct] = useState(null);
+  const [toast, setToast] = useState(null);
 
   const featuredProducts = products.slice(0, 6);
   const getProductKey = (product) => product?._id || product?.id || product?.productId;
@@ -100,6 +101,28 @@ function HomePage() {
     return localFallbackImage;
   };
 
+  const getStockMeta = (product) => {
+    const quantity = Number(product?.quantity ?? -1);
+    const hasExplicitStock = Number.isFinite(quantity) && quantity >= 0;
+    const isOutOfStock = product?.inStock === false || (hasExplicitStock && quantity === 0);
+    const isLowStock = hasExplicitStock && quantity > 0 && quantity <= 5;
+
+    if (isOutOfStock) {
+      return { label: "Out of Stock", className: "stock-out", canBuy: false };
+    }
+
+    if (isLowStock) {
+      return { label: `Only ${quantity} left`, className: "stock-low", canBuy: true };
+    }
+
+    return { label: "In Stock", className: "stock-ok", canBuy: true };
+  };
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    window.setTimeout(() => setToast(null), 2200);
+  };
+
   useEffect(() => {
     const loadProducts = async () => {
       try {
@@ -143,7 +166,7 @@ function HomePage() {
     }
 
     addToCart(product, 1);
-    alert(`${product.name} added to cart!`);
+    showToast(`${product.name} added to cart`);
   };
 
   const toggleWishlist = (product) => {
@@ -288,12 +311,21 @@ function HomePage() {
                 <span className="featured-chip">Best Seller</span>
               </div>
               <div className="card-content">
+                {(() => {
+                  const stockMeta = getStockMeta(product);
+                  return (
+                    <>
                 <h4>{product.name}</h4>
                 <div className="product-meta-row">
                   <p className="category">{product.category}</p>
                   <span className="rating-pill">⭐ {Number(product.rating || 0).toFixed(1)}</span>
                 </div>
                 <p className="description">{clampDescription(product.description)}</p>
+                <div className="trust-row">
+                  <span className={`trust-pill ${stockMeta.className}`}>{stockMeta.label}</span>
+                  <span className="trust-pill eta-pill">ETA 60-120 min</span>
+                  <span className="trust-pill verified-pill">Verified Reviews</span>
+                </div>
                 <div className="card-footer">
                   <div className="price-rating">
                     <span className="price">₹{product.price}</span>
@@ -302,9 +334,10 @@ function HomePage() {
                   <div className="featured-actions">
                     <button
                       className="btn btn-sm add-to-cart-btn"
+                      disabled={!stockMeta.canBuy}
                       onClick={() => handleAddToCart(product)}
                     >
-                      Add to Cart
+                      {stockMeta.canBuy ? "Add to Cart" : "Unavailable"}
                     </button>
                     <button
                       type="button"
@@ -315,6 +348,9 @@ function HomePage() {
                     </button>
                   </div>
                 </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           ))}
@@ -406,6 +442,12 @@ function HomePage() {
           }
         }}
       />
+
+      {toast && (
+        <div className={`app-toast ${toast.type === "error" ? "is-error" : "is-success"}`} role="status" aria-live="polite">
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 }
