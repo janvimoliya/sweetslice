@@ -329,7 +329,7 @@ function HomePage() {
                 <div className="card-footer">
                   <div className="price-rating">
                     <span className="price">₹{product.price}</span>
-                    <span className="rating">{Number(product.approvedReviewCount || product.reviewCount || 0)} reviews</span>
+                    {/* <span className="rating">{Number(product.approvedReviewCount || product.reviewCount || 0)} reviews</span> */}
                   </div>
                   <div className="featured-actions">
                     <button
@@ -339,13 +339,13 @@ function HomePage() {
                     >
                       {stockMeta.canBuy ? "Add to Cart" : "Unavailable"}
                     </button>
-                    <button
+                    {/* <button
                       type="button"
                       className="btn btn-sm btn-outline-dark"
                       onClick={() => setActiveReviewProduct(product)}
                     >
                       Reviews
-                    </button>
+                    </button> */}
                   </div>
                 </div>
                     </>

@@ -293,20 +293,6 @@ function ShopPage() {
                     event.currentTarget.src = localFallbackImage;
                   }}
                 />
-                <div className="product-overlay">
-                  {(() => {
-                    const stockMeta = getStockMeta(product);
-                    return (
-                  <button
-                    className="shop-overlay-cart-btn"
-                    disabled={!stockMeta.canBuy}
-                    onClick={() => handleAddToCart(product)}
-                  >
-                    {stockMeta.canBuy ? "Add to Cart" : "Unavailable"}
-                  </button>
-                    );
-                  })()}
-                </div>
               </div>
 
               <div className="product-info">
@@ -352,6 +338,15 @@ function ShopPage() {
                     ⭐ {Number(product.rating || 0).toFixed(1)} ({Number(product.approvedReviewCount || product.reviewCount || 0)})
                   </span>
                 </div>
+
+                <button
+                  type="button"
+                  className="btn btn-sm btn-danger mt-2"
+                  disabled={!stockMeta.canBuy}
+                  onClick={() => handleAddToCart(product)}
+                >
+                  {stockMeta.canBuy ? "Add to Cart" : "Unavailable"}
+                </button>
 
                 <button
                   type="button"
