@@ -25,6 +25,16 @@ const userSchema = new mongoose.Schema(
       minlength: 8,
       select: false, // Don't return password by default
     },
+    resetPasswordToken: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    resetPasswordExpiresAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
     gender: {
       type: String,
       enum: ['male', 'female', 'other'],

@@ -328,7 +328,6 @@ function ShopPage() {
 
                 <div className="product-trust-row">
                   <span className={`product-trust-pill ${stockMeta.className}`}>{stockMeta.label}</span>
-                  <span className="product-trust-pill eta-pill">ETA 60-120 min</span>
                   <span className="product-trust-pill verified-pill">Verified Reviews</span>
                 </div>
 
@@ -348,13 +347,23 @@ function ShopPage() {
                   {stockMeta.canBuy ? "Add to Cart" : "Unavailable"}
                 </button>
 
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-dark mt-2"
-                  onClick={() => setActiveReviewProduct(product)}
-                >
-                  View Reviews
-                </button>
+                <div className="product-secondary-actions">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-dark"
+                    onClick={() => navigate(`/product/${normalizeProductKey(product)}`)}
+                  >
+                    More Details
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-dark"
+                    onClick={() => setActiveReviewProduct(product)}
+                  >
+                    View Reviews
+                  </button>
+                </div>
                     </>
                   );
                 })()}

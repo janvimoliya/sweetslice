@@ -7,6 +7,7 @@ import {
   deleteProduct,
   getProductsByCategory,
   getProductReviews,
+  getProductReviewEligibility,
   submitProductReview,
 } from '../controllers/Product.controller.js';
 
@@ -17,6 +18,7 @@ router.post('/create', createProduct);
 router.get('/all', getAllProducts);
 router.get('/category/:category', getProductsByCategory);
 router.get('/:productId/reviews', getProductReviews);
+router.get('/:productId/review-eligibility', getProductReviewEligibility);
 router.post('/:productId/reviews', submitProductReview);
 router.get('/:productId', getProductById);
 router.put('/:productId', updateProduct);

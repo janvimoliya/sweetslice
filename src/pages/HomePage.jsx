@@ -323,7 +323,6 @@ function HomePage() {
                 <p className="description">{clampDescription(product.description)}</p>
                 <div className="trust-row">
                   <span className={`trust-pill ${stockMeta.className}`}>{stockMeta.label}</span>
-                  <span className="trust-pill eta-pill">ETA 60-120 min</span>
                   <span className="trust-pill verified-pill">Verified Reviews</span>
                 </div>
                 <div className="card-footer">
@@ -332,6 +331,12 @@ function HomePage() {
                     {/* <span className="rating">{Number(product.approvedReviewCount || product.reviewCount || 0)} reviews</span> */}
                   </div>
                   <div className="featured-actions">
+                    <button
+                      className="btn btn-sm btn-outline-dark"
+                      onClick={() => navigate(`/product/${normalizeProductKey(product)}`)}
+                    >
+                      More Details
+                    </button>
                     <button
                       className="btn btn-sm add-to-cart-btn"
                       disabled={!stockMeta.canBuy}

@@ -9,6 +9,8 @@ import CommonLayout from './components/CommonLayout'
 import HomePage from './pages/HomePage'
 import RegisterPage from './pages/RegisterPage'
 import LoginPage from './pages/LoginPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import ContactPage from './pages/ContactPage'
 import ShopPage from './pages/ShopPage'
 import CartPage from './pages/CartPage'
@@ -23,6 +25,7 @@ import TermsPage from './pages/TermsPage'
 import ShippingInfoPage from './pages/ShippingInfoPage'
 import ReturnsPage from './pages/ReturnsPage'
 import OffersPage from './pages/OffersPage'
+import ProductDetailsPage from './pages/ProductDetailsPage'
 import AdminLoginPage from './pages/AdminLoginPage'
 import AdminPanelPage from './pages/AdminPanelPage'
 import AdminProfilePage from './pages/AdminProfilePage'
@@ -138,8 +141,11 @@ function AppRouterContent({ theme, onToggleTheme }) {
       >
         <Route path="/" element={<HomePage />} />
         <Route path="/shop" element={<ShopPage />} />
+        <Route path="/product/:productId" element={<ProductDetailsPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />

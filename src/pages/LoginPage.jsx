@@ -211,9 +211,9 @@ function LoginPage() {
                                     <label htmlFor="password" className="form-label-modern">
                                         <i className="bi bi-lock"></i> Password
                                     </label>
-                                    <a href="#forgot" className="link-action">
+                                    <Link to="/forgot-password" className="link-action">
                                         Forgot password?
-                                    </a>
+                                    </Link>
                                 </div>
                                 <div className="password-input-wrapper">
                                     <input

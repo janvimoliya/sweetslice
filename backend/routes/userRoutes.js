@@ -2,6 +2,8 @@ import express from 'express';
 import {
   registerUser,
   loginUser,
+  forgotPassword,
+  resetPassword,
   getAllUsers,
   getUserById,
   updateUser,
@@ -14,6 +16,8 @@ const router = express.Router();
 // Public routes
 router.post('/register', uploadProfilePic.single('profile_picture'), registerUser);
 router.post('/login', loginUser);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password/:token', resetPassword);
 
 // Protected routes (add auth middleware if needed)
 router.get('/all', getAllUsers);

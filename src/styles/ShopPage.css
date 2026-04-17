@@ -486,6 +486,16 @@
   gap: 4px;
 }
 
+.product-secondary-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.product-secondary-actions .btn {
+  flex: 1;
+}
+
 /* Wishlist Button */
 .wishlist-btn {
   background: none;

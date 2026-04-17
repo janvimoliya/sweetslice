@@ -38,6 +38,23 @@ const resolveUserIdFromToken = (token) => {
   }
 };
 
+const hasDeliveredPurchaseForProduct = async ({ userId, productObjectId }) => {
+  if (!userId || !productObjectId) {
+    return false;
+  }
+
+  return Boolean(
+    await Order.exists({
+      userId,
+      status: 'delivered',
+      $or: [
+        { 'items.productId': productObjectId },
+        { 'items.productId': String(productObjectId) },
+      ],
+    })
+  );
+};
+
 // Create Product
 export const createProduct = async (req, res) => {
   try {
@@ -250,11 +267,16 @@ export const submitProductReview = async (req, res) => {
       return res.status(401).json({ message: 'User not found for this session' });
     }
 
-    const hasDeliveredOrder = await Order.exists({
+    const hasDeliveredOrder = await hasDeliveredPurchaseForProduct({
       userId,
-      status: 'delivered',
-      'items.productId': product._id,
+      productObjectId: product._id,
     });
+
+    if (!hasDeliveredOrder) {
+      return res.status(403).json({
+        message: 'Only users who purchased and received this product can submit a review',
+      });
+    }
 
     await Review.findOneAndUpdate(
       { productId: product._id, userId },
@@ -265,7 +287,7 @@ export const submitProductReview = async (req, res) => {
         userEmail: String(user.email || '').trim().toLowerCase(),
         rating,
         comment,
-        isVerifiedBuyer: Boolean(hasDeliveredOrder),
+        isVerifiedBuyer: true,
         status: 'pending',
         moderatedBy: null,
         moderatedAt: null,
@@ -284,18 +306,55 @@ export const submitProductReview = async (req, res) => {
     await product.save();
 
     return res.status(201).json({
-      message: hasDeliveredOrder
-        ? 'Review submitted successfully and is pending moderation'
-        : 'Review submitted. It is marked as non-verified and pending moderation',
+      message: 'Review submitted successfully and is pending moderation',
       data: {
         productId,
         rating,
         comment,
-        isVerifiedBuyer: Boolean(hasDeliveredOrder),
+        isVerifiedBuyer: true,
         status: 'pending',
       },
     });
   } catch (error) {
     return res.status(500).json({ message: 'Error submitting product review', error: error.message });
+  }
+};
+
+// Check if current user can review a product (must have delivered purchase)
+export const getProductReviewEligibility = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const token = getTokenFromHeader(req.headers.authorization || '');
+    const userId = resolveUserIdFromToken(token);
+
+    if (!userId) {
+      return res.status(200).json({
+        message: 'Review eligibility fetched',
+        data: {
+          canReview: false,
+          reason: 'login-required',
+        },
+      });
+    }
+
+    const product = await Product.findById(productId).select('_id');
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    const canReview = await hasDeliveredPurchaseForProduct({
+      userId,
+      productObjectId: product._id,
+    });
+
+    return res.status(200).json({
+      message: 'Review eligibility fetched',
+      data: {
+        canReview,
+        reason: canReview ? 'eligible' : 'not-purchased-or-not-delivered',
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error checking review eligibility', error: error.message });
   }
 };

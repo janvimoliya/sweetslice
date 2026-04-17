@@ -14,6 +14,11 @@ function ProductReviewsModal({ isOpen, onClose, product, onReviewSubmitted }) {
     approvedReviewCount: Number(product?.approvedReviewCount || product?.reviewCount || 0),
     reviews: [],
   });
+  const [eligibility, setEligibility] = useState({
+    checked: false,
+    canReview: false,
+    reason: '',
+  });
   const [form, setForm] = useState({ rating: '5', comment: '' });
 
   const productId = useMemo(() => String(product?._id || product?.id || product?.productId || '').trim(), [product]);
@@ -63,6 +68,46 @@ function ProductReviewsModal({ isOpen, onClose, product, onReviewSubmitted }) {
     };
   }, [apiBaseUrl, isOpen, productId]);
 
+  useEffect(() => {
+    if (!isOpen || !productId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadEligibility = async () => {
+      try {
+        const userToken = localStorage.getItem('userToken');
+        const response = await fetch(`${apiBaseUrl}/api/products/${productId}/review-eligibility`, {
+          headers: userToken
+            ? {
+                Authorization: `Bearer ${userToken}`,
+              }
+            : {},
+        });
+        const result = await response.json().catch(() => ({}));
+
+        if (!cancelled) {
+          setEligibility({
+            checked: true,
+            canReview: Boolean(result?.data?.canReview),
+            reason: String(result?.data?.reason || ''),
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setEligibility({ checked: true, canReview: false, reason: 'unknown' });
+        }
+      }
+    };
+
+    loadEligibility();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [apiBaseUrl, isOpen, productId]);
+
   if (!isOpen) {
     return null;
   }
@@ -71,6 +116,11 @@ function ProductReviewsModal({ isOpen, onClose, product, onReviewSubmitted }) {
     event.preventDefault();
     setError('');
     setSuccessMessage('');
+
+    if (!eligibility.canReview) {
+      setError('You can review only products that you purchased and received.');
+      return;
+    }
 
     const userToken = localStorage.getItem('userToken');
     if (!userToken) {
@@ -138,12 +188,20 @@ function ProductReviewsModal({ isOpen, onClose, product, onReviewSubmitted }) {
 
         <form className="reviews-modal-form" onSubmit={handleSubmit}>
           <h4>Write a verified-buyer review</h4>
+          {eligibility.checked && !eligibility.canReview ? (
+            <div className="alert alert-warning" role="status">
+              {eligibility.reason === 'login-required'
+                ? 'Please log in and purchase this product to submit a review after delivery.'
+                : 'Only users who purchased and received this product can submit a review.'}
+            </div>
+          ) : null}
           <div className="reviews-modal-form-grid">
             <div>
               <label className="form-label">Rating</label>
               <select
                 className="form-select"
                 value={form.rating}
+                disabled={submitting || (eligibility.checked && !eligibility.canReview)}
                 onChange={(event) => setForm((prev) => ({ ...prev, rating: event.target.value }))}
               >
                 <option value="5">5 - Excellent</option>
@@ -159,13 +217,18 @@ function ProductReviewsModal({ isOpen, onClose, product, onReviewSubmitted }) {
                 className="form-control"
                 rows="3"
                 value={form.comment}
+                disabled={submitting || (eligibility.checked && !eligibility.canReview)}
                 onChange={(event) => setForm((prev) => ({ ...prev, comment: event.target.value }))}
                 placeholder="Share your experience after receiving this cake"
                 maxLength={500}
               />
             </div>
           </div>
-          <button type="submit" className="btn btn-danger" disabled={submitting}>
+          <button
+            type="submit"
+            className="btn btn-danger"
+            disabled={submitting || (eligibility.checked && !eligibility.canReview)}
+          >
             {submitting ? 'Submitting...' : 'Submit For Moderation'}
           </button>
         </form>
