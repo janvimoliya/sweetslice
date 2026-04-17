@@ -172,6 +172,9 @@ export const register = async (req, res) => {
 
     const verifyLink = `${process.env.SERVER_URL || "http://localhost:5000"}/api/verify-email/${verificationToken}`;
 
+    let emailSent = false;
+    let emailError = null;
+
     try {
       const subject = "Verify your SweetSlice account";
       const html = `
@@ -194,7 +197,9 @@ export const register = async (req, res) => {
         subject,
         html,
       });
+      emailSent = true;
     } catch (mailError) {
+      emailError = mailError.message;
       console.error('[Register] Email sending failed:', mailError.message);
       // Don't delete user on email failure - allow signup to succeed anyway
     }
@@ -202,7 +207,10 @@ export const register = async (req, res) => {
     res.status(201).json({
       success: true,
       message:
-        "Registration successful. Please check your email to verify your account. You can log in anytime.",
+        emailSent
+          ? "Registration successful. Please check your email to verify your account."
+          : "Registration successful, but verification email could not be sent right now. You can still log in.",
+      emailSent,
       user: {
         _id: newUser._id,
         fullname: newUser.fullname,
@@ -213,6 +221,7 @@ export const register = async (req, res) => {
         Status: newUser.Status,
         createdAt: newUser.createdAt,
       },
+      ...(emailError && { emailError }),
     });
   } catch (error) {
     removeUploadedFile(req.file);

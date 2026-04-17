@@ -69,7 +69,25 @@ export const sendVerificationEmail = async ({
       subject,
       html,
     });
-    console.log("✅ Email sent:", info.messageId);
+
+    const accepted = Array.isArray(info.accepted) ? info.accepted : [];
+    const rejected = Array.isArray(info.rejected) ? info.rejected : [];
+
+    // Treat rejected recipients as a send failure so API responses stay truthful.
+    if (rejected.length > 0) {
+      throw new Error(
+        `SMTP rejected recipient(s): ${rejected.join(", ")}. Accepted: ${accepted.join(", ") || "none"}`,
+      );
+    }
+
+    console.log("✅ Email queued:", {
+      messageId: info.messageId,
+      accepted,
+      rejected,
+      response: info.response,
+    });
+
+    return info;
   } catch (err) {
     console.error("❌ Mail send error:", err.message);
     console.error("❌ Full error:", err);
