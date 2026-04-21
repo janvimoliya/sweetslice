@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import process from 'node:process';
+import Razorpay from 'razorpay';
 import Order from '../model/Order.js';
 import Product from '../model/Product.js';
 import Offer from '../model/Offer.js';
@@ -7,6 +8,16 @@ import User from '../model/User.js';
 import { sendVerificationEmail } from '../config/mailer.js';
 
 const PAYMENT_SECRET = process.env.PAYMENT_GATEWAY_SECRET || process.env.JWT_SECRET || 'sweetslice-payment-secret';
+const FIRST_ORDER_PROMO_CODE = 'SWEETSLICE20';
+const RAZORPAY_KEY_ID = String(process.env.RAZORPAY_KEY_ID || '').trim();
+const RAZORPAY_KEY_SECRET = String(process.env.RAZORPAY_KEY_SECRET || '').trim();
+const hasRazorpayCredentials = Boolean(RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET);
+const razorpayInstance = hasRazorpayCredentials
+  ? new Razorpay({
+      key_id: RAZORPAY_KEY_ID,
+      key_secret: RAZORPAY_KEY_SECRET,
+    })
+  : null;
 
 const buildOrderNumber = () => {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -19,6 +30,73 @@ const buildPaymentSignature = ({ orderId, paymentSessionId, status }) =>
     .createHmac('sha256', PAYMENT_SECRET)
     .update(`${orderId}:${paymentSessionId}:${status}`)
     .digest('hex');
+
+const calculateAutomaticProductOfferDiscount = async ({ trustedItems, serverSubtotal }) => {
+  if (!Array.isArray(trustedItems) || trustedItems.length === 0) {
+    return { discount: 0, title: '' };
+  }
+
+  const currentDate = new Date();
+  const productIds = [...new Set(trustedItems.map((item) => String(item.productId)))];
+  const activeOffers = await Offer.find({
+    isActive: true,
+    startDate: { $lte: currentDate },
+    endDate: { $gte: currentDate },
+    applicableProducts: { $in: productIds },
+  }).select('title discountType discountPercentage discountValue minPurchaseAmount applicableProducts');
+
+  if (!activeOffers.length) {
+    return { discount: 0, title: '' };
+  }
+
+  let discountTotal = 0;
+  const appliedTitles = new Set();
+
+  trustedItems.forEach((item) => {
+    const itemProductId = String(item.productId);
+    const itemTotal = Number(item.price || 0) * Number(item.quantity || 0);
+    if (itemTotal <= 0) return;
+
+    const matchingOffers = activeOffers.filter((offer) => {
+      const meetsMinPurchase = serverSubtotal >= Number(offer.minPurchaseAmount || 0);
+      const hasProduct = Array.isArray(offer.applicableProducts)
+        && offer.applicableProducts.some((id) => String(id) === itemProductId);
+      return meetsMinPurchase && hasProduct;
+    });
+
+    if (!matchingOffers.length) return;
+
+    let bestDiscountForItem = 0;
+    let bestOfferTitle = '';
+
+    matchingOffers.forEach((offer) => {
+      const candidateDiscount = offer.discountType === 'fixed'
+        ? Math.min(Number(offer.discountValue || 0), itemTotal)
+        : (itemTotal * Number(offer.discountPercentage || 0)) / 100;
+
+      if (candidateDiscount > bestDiscountForItem) {
+        bestDiscountForItem = candidateDiscount;
+        bestOfferTitle = String(offer.title || '').trim();
+      }
+    });
+
+    if (bestDiscountForItem > 0) {
+      discountTotal += bestDiscountForItem;
+      if (bestOfferTitle) {
+        appliedTitles.add(bestOfferTitle);
+      }
+    }
+  });
+
+  const normalizedDiscount = Number(discountTotal.toFixed(2));
+  const title = appliedTitles.size === 1
+    ? [...appliedTitles][0]
+    : appliedTitles.size > 1
+      ? 'Auto Product Offers'
+      : '';
+
+  return { discount: normalizedDiscount, title };
+};
 
 const sendOrderConfirmationEmail = async (order) => {
   try {
@@ -185,46 +263,70 @@ export const createOrder = async (req, res) => {
     let resolvedCouponTitle = '';
 
     if (normalizedCouponCode) {
-      const currentDate = new Date();
-      const offer = await Offer.findOne({
-        code: normalizedCouponCode,
-        isActive: true,
-        startDate: { $lte: currentDate },
-        endDate: { $gte: currentDate },
-      }).select('title code discountType discountPercentage discountValue minPurchaseAmount applicableProducts');
+      if (normalizedCouponCode.toUpperCase() === FIRST_ORDER_PROMO_CODE) {
+        const existingOrdersCount = await Order.countDocuments({
+          userId,
+          status: { $ne: 'cancelled' },
+        });
 
-      if (!offer) {
-        return res.status(400).json({ message: 'Invalid or expired coupon code' });
-      }
-
-      const minPurchase = Number(offer.minPurchaseAmount || 0);
-      if (serverSubtotal < minPurchase) {
-        return res.status(400).json({ message: `Coupon requires minimum purchase of INR ${minPurchase}` });
-      }
-
-      let eligibleSubtotal = serverSubtotal;
-      if (Array.isArray(offer.applicableProducts) && offer.applicableProducts.length > 0) {
-        const applicableIds = new Set(offer.applicableProducts.map((id) => String(id)));
-        eligibleSubtotal = Number(
-          trustedItems
-            .filter((item) => applicableIds.has(String(item.productId)))
-            .reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
-            .toFixed(2)
-        );
-
-        if (eligibleSubtotal <= 0) {
-          return res.status(400).json({ message: 'Coupon is not applicable to items in this cart' });
+        if (existingOrdersCount > 0) {
+          return res.status(400).json({ message: 'SWEETSLICE20 is valid only for first orders' });
         }
+
+        serverDiscount = Number(((serverSubtotal * 20) / 100).toFixed(2));
+        resolvedCouponCode = FIRST_ORDER_PROMO_CODE;
+        resolvedCouponTitle = normalizedCouponTitle || 'First Order Offer';
+      } else {
+        const currentDate = new Date();
+        const offer = await Offer.findOne({
+          code: { $regex: `^${String(normalizedCouponCode).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' },
+          isActive: true,
+          startDate: { $lte: currentDate },
+          endDate: { $gte: currentDate },
+        }).select('title code discountType discountPercentage discountValue minPurchaseAmount applicableProducts');
+
+        if (!offer) {
+          return res.status(400).json({ message: 'Invalid or expired coupon code' });
+        }
+
+        const minPurchase = Number(offer.minPurchaseAmount || 0);
+        if (serverSubtotal < minPurchase) {
+          return res.status(400).json({ message: `Coupon requires minimum purchase of INR ${minPurchase}` });
+        }
+
+        let eligibleSubtotal = serverSubtotal;
+        if (Array.isArray(offer.applicableProducts) && offer.applicableProducts.length > 0) {
+          const applicableIds = new Set(offer.applicableProducts.map((id) => String(id)));
+          eligibleSubtotal = Number(
+            trustedItems
+              .filter((item) => applicableIds.has(String(item.productId)))
+              .reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
+              .toFixed(2)
+          );
+
+          if (eligibleSubtotal <= 0) {
+            return res.status(400).json({ message: 'Coupon is not applicable to items in this cart' });
+          }
+        }
+
+        serverDiscount =
+          offer.discountType === 'fixed'
+            ? Math.min(Number(offer.discountValue || 0), eligibleSubtotal)
+            : (eligibleSubtotal * Number(offer.discountPercentage || 0)) / 100;
+
+        serverDiscount = Number(serverDiscount.toFixed(2));
+        resolvedCouponCode = String(offer.code || normalizedCouponCode).trim();
+        resolvedCouponTitle = String(offer.title || normalizedCouponTitle).trim();
       }
+    } else {
+      const automaticOfferResult = await calculateAutomaticProductOfferDiscount({
+        trustedItems,
+        serverSubtotal,
+      });
 
-      serverDiscount =
-        offer.discountType === 'fixed'
-          ? Math.min(Number(offer.discountValue || 0), eligibleSubtotal)
-          : (eligibleSubtotal * Number(offer.discountPercentage || 0)) / 100;
-
-      serverDiscount = Number(serverDiscount.toFixed(2));
-      resolvedCouponCode = String(offer.code || normalizedCouponCode).trim();
-      resolvedCouponTitle = String(offer.title || normalizedCouponTitle).trim();
+      serverDiscount = Number(automaticOfferResult.discount || 0);
+      resolvedCouponCode = '';
+      resolvedCouponTitle = automaticOfferResult.title || '';
     }
 
     const discountedSubtotal = Math.max(serverSubtotal - serverDiscount, 0);
@@ -262,7 +364,12 @@ export const createOrder = async (req, res) => {
       deliverySlot: normalizedDeliverySlot,
       status: 'pending',
       paymentStatus: 'pending',
-      paymentGateway: normalizedPaymentMethod === 'cod' ? 'manual' : 'mockpay',
+      paymentGateway:
+        normalizedPaymentMethod === 'cod'
+          ? 'manual'
+          : normalizedPaymentMethod === 'razorpay'
+            ? 'razorpay'
+            : 'mockpay',
     });
 
     await newOrder.save();
@@ -298,6 +405,47 @@ export const initiateOrderPayment = async (req, res) => {
 
     if (order.paymentStatus === 'completed') {
       return res.status(400).json({ message: 'Payment already completed for this order' });
+    }
+
+    if (String(order.paymentMethod || '').toLowerCase() === 'razorpay') {
+      if (!razorpayInstance) {
+        return res.status(500).json({
+          message: 'Razorpay is not configured on server. Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in backend .env',
+        });
+      }
+
+      const amountInPaise = Math.round(Number(order.totalAmount || 0) * 100);
+      if (!Number.isFinite(amountInPaise) || amountInPaise <= 0) {
+        return res.status(400).json({ message: 'Order amount must be greater than zero for payment initiation' });
+      }
+
+      const razorpayOrder = await razorpayInstance.orders.create({
+        amount: amountInPaise,
+        currency: 'INR',
+        receipt: String(order.orderNumber || `ORDER-${String(order._id).slice(-8)}`),
+        notes: {
+          orderId: String(order._id),
+          orderNumber: String(order.orderNumber || ''),
+        },
+      });
+
+      order.paymentGateway = 'razorpay';
+      order.paymentGatewayOrderId = String(razorpayOrder.id || '');
+      order.paymentInitiatedAt = new Date();
+      order.paymentFailureReason = '';
+      await order.save();
+
+      return res.status(200).json({
+        message: 'Payment initiated',
+        data: {
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          keyId: RAZORPAY_KEY_ID,
+          razorpayOrderId: razorpayOrder.id,
+          amount: Number(razorpayOrder.amount || amountInPaise),
+          currency: String(razorpayOrder.currency || 'INR'),
+        },
+      });
     }
 
     const paymentSessionId = `PAY-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
@@ -338,17 +486,78 @@ export const verifyOrderPayment = async (req, res) => {
       paymentSessionId,
       signedToken,
       transactionId,
+      razorpayPaymentId,
+      razorpayOrderId,
+      razorpaySignature,
       failureReason,
     } = req.body;
-
-    const normalizedStatus = String(paymentStatus || '').toLowerCase();
-    if (!['completed', 'failed'].includes(normalizedStatus)) {
-      return res.status(400).json({ message: 'Invalid payment status. Use completed or failed.' });
-    }
 
     const order = await Order.findById(orderId);
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const normalizedMethod = String(order.paymentMethod || '').toLowerCase();
+
+    if (normalizedMethod === 'razorpay') {
+      if (!RAZORPAY_KEY_SECRET) {
+        return res.status(500).json({
+          message: 'Razorpay is not configured on server. Add RAZORPAY_KEY_SECRET in backend .env',
+        });
+      }
+
+      if (order.paymentStatus === 'completed') {
+        return res.status(400).json({ message: 'Payment already completed for this order' });
+      }
+
+      const normalizedRazorpayPaymentId = String(razorpayPaymentId || transactionId || '').trim();
+      const normalizedRazorpayOrderId = String(razorpayOrderId || paymentSessionId || '').trim();
+      const normalizedRazorpaySignature = String(razorpaySignature || signedToken || '').trim();
+
+      if (!normalizedRazorpayPaymentId || !normalizedRazorpayOrderId || !normalizedRazorpaySignature) {
+        return res.status(400).json({
+          message: 'razorpayPaymentId, razorpayOrderId and razorpaySignature are required',
+        });
+      }
+
+      if (
+        order.paymentGatewayOrderId &&
+        String(order.paymentGatewayOrderId).trim() !== normalizedRazorpayOrderId
+      ) {
+        return res.status(400).json({ message: 'Razorpay order ID does not match this order' });
+      }
+
+      const expectedSignature = crypto
+        .createHmac('sha256', RAZORPAY_KEY_SECRET)
+        .update(`${normalizedRazorpayOrderId}|${normalizedRazorpayPaymentId}`)
+        .digest('hex');
+
+      if (expectedSignature !== normalizedRazorpaySignature) {
+        return res.status(400).json({ message: 'Invalid Razorpay payment signature' });
+      }
+
+      order.paymentGateway = 'razorpay';
+      order.paymentGatewayOrderId = normalizedRazorpayOrderId;
+      order.paymentStatus = 'completed';
+      order.paymentTransactionId = normalizedRazorpayPaymentId;
+      order.paymentFailureReason = '';
+      order.paymentVerifiedAt = new Date();
+      if (order.status === 'pending') {
+        order.status = 'processing';
+      }
+
+      await order.save();
+      await sendOrderConfirmationEmail(order);
+
+      return res.status(200).json({
+        message: 'Payment verified successfully',
+        data: order,
+      });
+    }
+
+    const normalizedStatus = String(paymentStatus || '').toLowerCase();
+    if (!['completed', 'failed'].includes(normalizedStatus)) {
+      return res.status(400).json({ message: 'Invalid payment status. Use completed or failed.' });
     }
 
     if (!paymentSessionId || !signedToken) {

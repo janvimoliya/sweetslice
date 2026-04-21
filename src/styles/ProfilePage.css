@@ -489,7 +489,7 @@
 
 .profile-tab-switcher {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   background: #ecd9cd;
   border-radius: 999px;
   border: 1px solid #dcc3b3;
@@ -518,6 +518,47 @@
   border-radius: 20px;
   padding: 18px;
   box-shadow: none;
+}
+
+.password-card {
+  text-align: left;
+}
+
+.password-form .form-label {
+  color: #5d3e2f;
+  font-weight: 700;
+}
+
+.password-help-text {
+  margin: -2px 0 14px;
+  color: #8b6d7a;
+  font-size: 0.92rem;
+}
+
+.password-form .btn.btn-primary {
+  background: linear-gradient(135deg, #8b5e3c, #6f4a33) !important;
+  border: 1px solid #5e3d2b !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+
+.password-form .btn.btn-primary:hover {
+  background: linear-gradient(135deg, #6f4a33, #5b3a2a) !important;
+  border-color: #4b3022 !important;
+  color: #fff !important;
+}
+
+.password-form .btn.btn-secondary {
+  background: #f7efe8 !important;
+  border: 1px solid #c9b8ab !important;
+  color: #5a3348 !important;
+  font-weight: 700;
+}
+
+.password-form .btn.btn-secondary:hover {
+  background: #eedfd1 !important;
+  border-color: #bca494 !important;
+  color: #2b1a16 !important;
 }
 
 .profile-top-row {
@@ -570,10 +611,25 @@
 .profile-actions-inline {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .profile-actions-inline .btn {
   min-width: 110px;
+  flex: 1 1 120px;
+}
+
+.btn-reset-password {
+  background: #f4e5dc;
+  border: 1px solid #d2b7a5;
+  color: #68422f;
+  font-weight: 700;
+}
+
+.btn-reset-password:hover {
+  background: #e8d1c2;
+  border-color: #be9a86;
+  color: #4f3020;
 }
 
 .profile-upload-row {
@@ -691,6 +747,11 @@
 
   .profile-actions-inline .btn {
     flex: 1;
+  }
+
+  .profile-tab-switcher {
+    grid-template-columns: 1fr;
+    border-radius: 18px;
   }
 
   .profile-stats {

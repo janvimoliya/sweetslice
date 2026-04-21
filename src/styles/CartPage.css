@@ -180,6 +180,27 @@
   text-transform: uppercase;
 }
 
+.item-price-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.item-price-original {
+  font-size: 13px;
+  color: #8b8b8b;
+  text-decoration: line-through;
+  font-weight: 600;
+  margin: 0;
+}
+
+.item-offer-note {
+  font-size: 12px;
+  color: #2e7d32;
+  font-weight: 700;
+  margin: 0;
+}
+
 /* Item Quantity */
 .item-quantity {
   display: flex;
@@ -219,6 +240,13 @@
   flex-direction: column;
   gap: 10px;
   align-items: center;
+}
+
+.item-total-original {
+  font-size: 12px;
+  color: #8b8b8b;
+  text-decoration: line-through;
+  margin: 0;
 }
 
 .total-label {

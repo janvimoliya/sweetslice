@@ -368,6 +368,39 @@
 }
 
 /* Product Info */
+
+  .product-price-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .product-price-original {
+    font-size: 0.82rem;
+    color: #7f7f7f;
+    text-decoration: line-through;
+    font-weight: 600;
+  }
+
+  .product-offer-note {
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: #2e7d32;
+    font-weight: 700;
+  }
+
+  .product-offer-badge {
+    background: linear-gradient(135deg, var(--brand-800), var(--cocoa-700));
+    color: #ffffff;
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 0.68rem;
+    letter-spacing: 0.4px;
+  }
 .product-info {
   padding: 20px;
   display: flex;

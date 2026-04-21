@@ -1,3 +1,28 @@
+let razorpayScriptPromise;
+
+const loadRazorpayScript = () => {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('Razorpay is only available in browser environments'));
+  }
+
+  if (window.Razorpay) {
+    return Promise.resolve(true);
+  }
+
+  if (!razorpayScriptPromise) {
+    razorpayScriptPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => reject(new Error('Unable to load Razorpay Checkout SDK'));
+      document.body.appendChild(script);
+    });
+  }
+
+  return razorpayScriptPromise;
+};
+
 export const initiateRazorpayPayment = async ({
   apiBaseUrl,
   orderId,
@@ -8,6 +33,8 @@ export const initiateRazorpayPayment = async ({
   callback,
 }) => {
   try {
+    await loadRazorpayScript();
+
     const initiateResponse = await fetch(`${apiBaseUrl}/api/orders/${orderId}/payment/initiate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -19,25 +46,72 @@ export const initiateRazorpayPayment = async ({
     }
 
     const paymentData = initiateResult?.data || {};
-    const transactionId = `TXN-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const key = String(paymentData.keyId || '').trim();
+    const razorpayOrderId = String(paymentData.razorpayOrderId || '').trim();
+    const amount = Number(paymentData.amount || 0);
+    const currency = String(paymentData.currency || 'INR').trim() || 'INR';
 
-    if (callback) {
-      window.setTimeout(() => {
+    if (!key || !razorpayOrderId || !Number.isFinite(amount) || amount <= 0) {
+      throw new Error('Invalid Razorpay payment initiation response');
+    }
+
+    const razorpayOptions = {
+      key,
+      amount,
+      currency,
+      name: 'SweetSlice',
+      description: `Payment for order ${String(orderNumber || '') || String(orderId || '')}`,
+      order_id: razorpayOrderId,
+      prefill: {
+        name: String(userName || '').trim(),
+        email: String(userEmail || '').trim(),
+      },
+      notes: {
+        appOrderId: String(orderId || '').trim(),
+        appOrderNumber: String(orderNumber || '').trim(),
+      },
+      handler: (response) => {
+        if (!callback) return;
+
         callback({
           success: true,
-          razorpayPaymentId: transactionId,
-          razorpayOrderId: String(paymentData.paymentSessionId || ''),
-          razorpaySignature: String(paymentData.signedToken || ''),
-          paymentSessionId: String(paymentData.paymentSessionId || ''),
-          signedToken: String(paymentData.signedToken || ''),
+          razorpayPaymentId: String(response?.razorpay_payment_id || ''),
+          razorpayOrderId: String(response?.razorpay_order_id || razorpayOrderId),
+          razorpaySignature: String(response?.razorpay_signature || ''),
           userEmail,
           userName,
           totalAmount,
           orderId,
           orderNumber,
         });
-      }, 800);
-    }
+      },
+      modal: {
+        ondismiss: () => {
+          if (!callback) return;
+
+          callback({
+            success: false,
+            error: 'Payment popup closed before completing payment',
+          });
+        },
+      },
+      theme: {
+        color: '#6f4a33',
+      },
+    };
+
+    const razorpayInstance = new window.Razorpay(razorpayOptions);
+
+    razorpayInstance.on('payment.failed', (response) => {
+      if (!callback) return;
+
+      callback({
+        success: false,
+        error: String(response?.error?.description || response?.error?.reason || 'Payment failed at Razorpay'),
+      });
+    });
+
+    razorpayInstance.open();
   } catch (error) {
     if (callback) {
       callback({
@@ -64,8 +138,6 @@ export const verifyRazorpaySignature = async ({
         razorpayPaymentId,
         razorpayOrderId,
         razorpaySignature,
-        paymentSessionId: razorpayOrderId,
-        signedToken: razorpaySignature,
         transactionId: razorpayPaymentId,
       }),
     });

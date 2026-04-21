@@ -24,6 +24,14 @@ function ProfilePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitMessage, setSubmitMessage] = useState("")
   const [submitError, setSubmitError] = useState("")
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  })
+  const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false)
+  const [passwordMessage, setPasswordMessage] = useState("")
+  const [passwordError, setPasswordError] = useState("")
   const [profilePreview, setProfilePreview] = useState("")
   const [selectedProfileFile, setSelectedProfileFile] = useState(null)
   const [cancellingOrderId, setCancellingOrderId] = useState("")
@@ -333,10 +341,76 @@ function ProfilePage() {
     navigate("/login");
   };
 
+  const handlePasswordFormChange = (event) => {
+    const { name, value } = event.target;
+    setPasswordForm((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+  };
+
+  const handlePasswordResetSubmit = async (event) => {
+    event.preventDefault();
+    setPasswordMessage("");
+    setPasswordError("");
+
+    const currentPassword = String(passwordForm.currentPassword || "").trim();
+    const newPassword = String(passwordForm.newPassword || "").trim();
+    const confirmPassword = String(passwordForm.confirmPassword || "").trim();
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError("Current password, new password and confirm password are required");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters long");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New password and confirm password do not match");
+      return;
+    }
+
+    try {
+      setIsPasswordSubmitting(true);
+      const response = await fetch(`${apiBaseUrl}/api/users/change-password`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(localStorage.getItem("userToken") ? {
+            Authorization: `Bearer ${localStorage.getItem("userToken")}`,
+          } : {}),
+        },
+        body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result.message || "Unable to update password");
+      }
+
+      setPasswordMessage(result.message || "Password updated successfully");
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setTimeout(() => setPasswordMessage(""), 3000);
+    } catch (error) {
+      setPasswordError(error.message || "Unable to update password");
+    } finally {
+      setIsPasswordSubmitting(false);
+    }
+  };
+
   useEffect(() => {
     const queryTab = new URLSearchParams(location.search).get("tab");
     if (queryTab === "orders") {
       setActiveTab("orders");
+      return;
+    }
+
+    if (queryTab === "password") {
+      setActiveTab("password");
       return;
     }
 
@@ -528,6 +602,13 @@ function ProfilePage() {
           </button>
           <button
             type="button"
+            className={`profile-tab-btn ${activeTab === "password" ? "active" : ""}`}
+            onClick={() => handleTabSwitch("password")}
+          >
+            Reset Password
+          </button>
+          <button
+            type="button"
             className={`profile-tab-btn ${activeTab === "orders" ? "active" : ""}`}
             onClick={() => handleTabSwitch("orders")}
           >
@@ -537,6 +618,9 @@ function ProfilePage() {
 
         {submitMessage && <div className="alert alert-success mb-3">{submitMessage}</div>}
         {submitError && <div className="alert alert-danger mb-3">{submitError}</div>}
+
+        {passwordMessage && <div className="alert alert-success mb-3">{passwordMessage}</div>}
+        {passwordError && <div className="alert alert-danger mb-3">{passwordError}</div>}
 
         {activeTab === "profile" && (
           <div className="profile-panel-card">
@@ -566,6 +650,13 @@ function ProfilePage() {
                 >
                   Edit Profile
                 </button>
+                {/* <button
+                  type="button"
+                  className="btn btn-reset-password"
+                  onClick={() => handleTabSwitch("password")}
+                >
+                  Reset Password
+                </button> */}
                 <button
                   type="button"
                   className="btn btn-logout"
@@ -789,6 +880,74 @@ function ProfilePage() {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {activeTab === "password" && (
+          <div className="password-card profile-panel-card">
+            <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap mb-3">
+              <h5 className="mb-0">Reset Password</h5>
+              <small className="text-muted">Change your password while signed in</small>
+            </div>
+
+            <form className="password-form" onSubmit={handlePasswordResetSubmit}>
+              <div className="row">
+                <div className="col-md-4 mb-3">
+                  <label className="form-label">Current Password *</label>
+                  <input
+                    type="password"
+                    name="currentPassword"
+                    className="form-control"
+                    value={passwordForm.currentPassword}
+                    onChange={handlePasswordFormChange}
+                    autoComplete="current-password"
+                  />
+                </div>
+                <div className="col-md-4 mb-3">
+                  <label className="form-label">New Password *</label>
+                  <input
+                    type="password"
+                    name="newPassword"
+                    className="form-control"
+                    value={passwordForm.newPassword}
+                    onChange={handlePasswordFormChange}
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="col-md-4 mb-3">
+                  <label className="form-label">Confirm Password *</label>
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    className="form-control"
+                    value={passwordForm.confirmPassword}
+                    onChange={handlePasswordFormChange}
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+
+              <div className="password-help-text">
+                Choose a strong password with at least 8 characters.
+              </div>
+
+              <div className="d-flex gap-2 flex-wrap">
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isPasswordSubmitting}
+                >
+                  {isPasswordSubmitting ? "Updating..." : "Update Password"}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setActiveTab("profile")}
+                >
+                  Back to Profile
+                </button>
+              </div>
+            </form>
           </div>
         )}
 

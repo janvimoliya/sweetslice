@@ -91,8 +91,13 @@ const orderSchema = new mongoose.Schema(
     },
     paymentGateway: {
       type: String,
-      enum: ['mockpay', 'manual', 'none'],
+      enum: ['mockpay', 'manual', 'none', 'razorpay'],
       default: 'none',
+    },
+    paymentGatewayOrderId: {
+      type: String,
+      trim: true,
+      default: '',
     },
     paymentTransactionId: {
       type: String,

@@ -113,11 +113,19 @@ export const registerUser = async (req, res) => {
 
     try {
       const subject = 'Welcome to SweetSlice';
+      const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+      const loginLink = `${clientUrl}/login`;
       const html = `
         <div style="font-family:Arial,sans-serif;line-height:1.6;color:#1f2937;max-width:560px;margin:auto;">
           <h2 style="margin-bottom:8px;">Welcome, ${newUser.fullName}!</h2>
           <p style="margin-top:0;">Your SweetSlice account has been created successfully.</p>
           <p>You can now log in and start exploring cakes, offers, and orders.</p>
+          <p>
+            <a href="${loginLink}" style="display:inline-block;padding:10px 18px;background:#7b4a34;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:700;">
+              Login to SweetSlice
+            </a>
+          </p>
+          <p style="font-size:12px;color:#6b7280;">If the button does not work, open this link: <a href="${loginLink}">${loginLink}</a></p>
           <p style="font-size:12px;color:#6b7280;">If you did not create this account, please contact support immediately.</p>
         </div>
       `;
@@ -414,5 +422,50 @@ export const resetPassword = async (req, res) => {
     return res.status(200).json({ message: 'Password reset successful. You can now log in.' });
   } catch (error) {
     return res.status(500).json({ message: 'Unable to reset password', error: error.message });
+  }
+};
+
+export const changePassword = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { currentPassword, newPassword, confirmPassword } = req.body || {};
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Authorization required' });
+    }
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ message: 'Current password, new password and confirm password are required' });
+    }
+
+    if (String(newPassword).length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters long' });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: 'New password and confirm password do not match' });
+    }
+
+    const user = await User.findById(userId).select('+password +resetPasswordToken +resetPasswordExpiresAt');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(String(currentPassword), user.password);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    user.password = await bcrypt.hash(String(newPassword), 10);
+    user.resetPasswordToken = null;
+    user.resetPasswordExpiresAt = null;
+    await user.save({ validateBeforeSave: false });
+
+    await syncRegisterCollectionFromUser(user, String(newPassword));
+
+    return res.status(200).json({ message: 'Password updated successfully' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Unable to update password', error: error.message });
   }
 };

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCart } from "../hooks/useCart";
 import { useWishlist } from "../hooks/useWishlist";
+import { calculateBestOfferForItem } from "../utils/offerPricing";
 import { products as fallbackProducts } from "../data/products";
 import CakeParticlesLayer from "../components/CakeParticlesLayer";
 import ProductReviewsModal from "../components/ProductReviewsModal";
@@ -18,10 +19,11 @@ function ShopPage() {
   const [sortBy, setSortBy] = useState("name");
   const [currentPage, setCurrentPage] = useState(1);
   const [activeReviewProduct, setActiveReviewProduct] = useState(null);
+  const [activeOffers, setActiveOffers] = useState([]);
   const [toast, setToast] = useState(null);
   const { search, pathname } = useLocation();
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addToCart, getCartTotal } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
   const getProductKey = (product) => product?._id || product?.id || product?.productId;
@@ -112,6 +114,31 @@ function ShopPage() {
     loadProducts();
   }, []);
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadActiveOffers = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/offers/active`);
+        const result = await response.json().catch(() => ({}));
+
+        if (!isCancelled && response.ok && result?.success && Array.isArray(result?.data)) {
+          setActiveOffers(result.data);
+        }
+      } catch {
+        if (!isCancelled) {
+          setActiveOffers([]);
+        }
+      }
+    };
+
+    loadActiveOffers();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
   const categories = useMemo(() => {
     const dynamicCategories = Array.from(new Set(products.map((product) => product.category).filter(Boolean)));
     return ["All Products", ...dynamicCategories];
@@ -187,6 +214,8 @@ function ShopPage() {
       navigate("/wishlist");
     }
   };
+
+  const cartSubtotal = Number(getCartTotal() || 0);
 
   return (
     <div className="shop-page">
@@ -298,6 +327,11 @@ function ShopPage() {
               <div className="product-info">
                 {(() => {
                   const stockMeta = getStockMeta(product);
+                  const offerPreview = calculateBestOfferForItem({
+                    item: { ...product, quantity: 1 },
+                    offers: activeOffers,
+                    subtotal: cartSubtotal + Number(product?.price || 0),
+                  });
                   return (
                     <>
                 <div className="d-flex justify-content-between align-items-start mb-2">
@@ -332,11 +366,27 @@ function ShopPage() {
                 </div>
 
                 <div className="d-flex justify-content-between align-items-center">
-                  <span className="product-price fw-bold">₹{product.price}</span>
+                  <div className="product-price-wrap">
+                    {offerPreview.discountAmount > 0 ? (
+                      <>
+                        <span className="product-price-original">₹{Number(product.price || 0).toFixed(2)}</span>
+                        <span className="product-price fw-bold">₹{offerPreview.discountedUnitPrice.toFixed(2)}</span>
+                      </>
+                    ) : (
+                      <span className="product-price fw-bold">₹{Number(product.price || 0).toFixed(2)}</span>
+                    )}
+                  </div>
                   <span className="product-rating">
                     ⭐ {Number(product.rating || 0).toFixed(1)} ({Number(product.approvedReviewCount || product.reviewCount || 0)})
                   </span>
                 </div>
+
+                {offerPreview.discountAmount > 0 && (
+                  <div className="product-offer-note">
+                    <span className="product-offer-badge">{offerPreview.offerBadge || 'OFFER'}</span>
+                    <span>{offerPreview.offerTitle || 'Offer applied'}</span>
+                  </div>
+                )}
 
                 <button
                   type="button"

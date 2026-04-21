@@ -4,6 +4,7 @@ import { useCart } from '../hooks/useCart';
 import { useToast } from '../hooks/useToast';
 import { rules, useFormValidation, validateField } from '../validation/formValidation';
 import { initiateRazorpayPayment, verifyRazorpaySignature } from '../utils/RazorpayPaymentHandler';
+import { calculateAutomaticOfferDiscount } from '../utils/offerPricing';
 import '../styles/CheckoutPage.css';
 
 function CheckoutPage() {
@@ -21,6 +22,7 @@ function CheckoutPage() {
   const [couponMessage, setCouponMessage] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [retryPaymentContext, setRetryPaymentContext] = useState(null);
+  const [activeOffers, setActiveOffers] = useState([]);
 
   const apiBaseUrl = 'http://localhost:5000';
   const userId = localStorage.getItem('userId');
@@ -35,6 +37,31 @@ function CheckoutPage() {
       navigate('/cart');
     }
   }, [userId, cart.length, navigate, retryPaymentContext]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadActiveOffers = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/offers/active`);
+        const result = await response.json().catch(() => ({}));
+
+        if (!isCancelled && response.ok && result?.success && Array.isArray(result?.data)) {
+          setActiveOffers(result.data);
+        }
+      } catch {
+        if (!isCancelled) {
+          setActiveOffers([]);
+        }
+      }
+    };
+
+    loadActiveOffers();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   const validationRules = {
     fullName: [rules.required('Full name is required'), rules.minLength(3)],
@@ -164,7 +191,7 @@ function CheckoutPage() {
             subtotalAmount: getCartTotal(),
             discountAmount: Number(couponDiscountAmount.toFixed(2)),
             couponCode: appliedCoupon?.code || '',
-            couponTitle: appliedCoupon?.title || '',
+            couponTitle: appliedCoupon?.title || automaticOfferTitle,
             wantsCustomization: Boolean(formValues.wantsCustomization),
             customizationNote: formValues.wantsCustomization
               ? formValues.customizationNote?.trim() || ''
@@ -402,7 +429,7 @@ function CheckoutPage() {
   };
 
   const validateShippingStep = () =>
-    validateStepFields(['fullName', 'email', 'mobile', 'street', 'city', 'state', 'zipCode']);
+    validateStepFields(['fullName', 'email', 'mobile', 'street', 'city', 'state', 'zipCode', 'deliveryDate', 'deliverySlot']);
 
   const validatePaymentStep = () => {
     if (values.paymentMethod !== 'credit-card') return true;
@@ -462,7 +489,7 @@ function CheckoutPage() {
       const response = await fetch(`${apiBaseUrl}/api/offers/validate-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: trimmedCode }),
+        body: JSON.stringify({ code: trimmedCode, userId }),
       });
 
       const result = await response.json().catch(() => ({}));
@@ -499,11 +526,21 @@ function CheckoutPage() {
   };
 
   const cartTotal = getCartTotal();
-  const couponDiscountAmount = appliedCoupon
+  const manualCouponDiscountAmount = appliedCoupon
     ? appliedCoupon.discountType === 'fixed'
       ? Math.min(Number(appliedCoupon.discountValue || 0), cartTotal)
       : (cartTotal * Number(appliedCoupon.discountPercentage || 0)) / 100
     : 0;
+  const automaticOfferResult = appliedCoupon
+    ? { discountAmount: 0, offerTitle: '' }
+    : calculateAutomaticOfferDiscount({
+      cartItems: cart,
+      offers: activeOffers,
+      subtotal: cartTotal,
+    });
+  const automaticOfferDiscountAmount = Number(automaticOfferResult.discountAmount || 0);
+  const automaticOfferTitle = String(automaticOfferResult.offerTitle || '').trim();
+  const couponDiscountAmount = appliedCoupon ? manualCouponDiscountAmount : automaticOfferDiscountAmount;
   const discountedSubtotal = Math.max(cartTotal - couponDiscountAmount, 0);
   const tax = (discountedSubtotal * 0.1).toFixed(2);
   const shippingCharge = discountedSubtotal > 50 ? 0 : 5;
@@ -707,7 +744,10 @@ function CheckoutPage() {
 
                 <div className="price-summary mt-4">
                   <div className="price-row"><span>Subtotal:</span><span>INR {cartTotal.toFixed(2)}</span></div>
-                  <div className="price-row"><span>Coupon Discount:</span><span>-INR {couponDiscountAmount.toFixed(2)}</span></div>
+                  <div className="price-row">
+                    <span>{appliedCoupon ? 'Coupon Discount:' : 'Offer Discount:'}</span>
+                    <span>-INR {couponDiscountAmount.toFixed(2)}</span>
+                  </div>
                   <div className="price-row"><span>Tax (10%):</span><span>INR {tax}</span></div>
                   <div className="price-row"><span>Shipping:</span><span>INR {shippingCharge.toFixed(2)}</span></div>
                   <div className="price-row total"><span>Total:</span><span>INR {finalTotal}</span></div>
@@ -730,6 +770,11 @@ function CheckoutPage() {
                       {appliedCoupon.discountType === 'fixed'
                         ? `INR ${Number(appliedCoupon.discountValue || 0).toFixed(2)} off applied`
                         : `${Number(appliedCoupon.discountPercentage || 0).toFixed(0)}% off applied`}
+                    </small>
+                  )}
+                  {!appliedCoupon && automaticOfferDiscountAmount > 0 && (
+                    <small className="text-success d-block mt-2">
+                      {automaticOfferTitle ? `${automaticOfferTitle} applied automatically` : 'Offer discount applied automatically'}
                     </small>
                   )}
                 </div>
@@ -756,7 +801,7 @@ function CheckoutPage() {
                       {isProcessingPayment ? 'Retrying Payment...' : 'Retry Payment'}
                     </button>
                   ) : (
-                    <button type="submit" className="btn btn-place-order" disabled={isSubmitting || isProcessingPayment}>
+                    <button type="submit" className="btn btn-place-order" disabled={isSubmitting || isProcessingPayment || !values.deliveryDate}>
                       {isSubmitting || isProcessingPayment
                         ? 'Processing...'
                         : values.paymentMethod === 'cod'

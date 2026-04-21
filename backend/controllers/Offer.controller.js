@@ -1,5 +1,21 @@
 import Offer from '../model/Offer.js';
 import Product from '../model/Product.js';
+import Order from '../model/Order.js';
+
+const FIRST_ORDER_PROMO_CODE = 'SWEETSLICE20';
+
+const escapeRegex = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const isFirstOrderUser = async (userId) => {
+  if (!userId) return false;
+
+  const existingOrdersCount = await Order.countDocuments({
+    userId,
+    status: { $ne: 'cancelled' },
+  });
+
+  return existingOrdersCount === 0;
+};
 
 const createDefaultOffersIfMissing = async () => {
   const now = new Date();
@@ -284,18 +300,51 @@ export const deleteOffer = async (req, res) => {
 
 export const validateOfferCode = async (req, res) => {
   try {
-    const { code } = req.body;
+    const { code, userId } = req.body;
+    const normalizedCode = String(code || '').trim();
 
-    if (!code) {
+    if (!normalizedCode) {
       return res.status(400).json({
         success: false,
         message: 'Offer code is required',
       });
     }
 
+    if (normalizedCode.toUpperCase() === FIRST_ORDER_PROMO_CODE) {
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: 'User ID is required to validate first-order promo code',
+        });
+      }
+
+      const eligibleForFirstOrder = await isFirstOrderUser(userId);
+      if (!eligibleForFirstOrder) {
+        return res.status(400).json({
+          success: false,
+          message: 'SWEETSLICE20 is valid only for first orders',
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Offer code is valid',
+        data: {
+          title: 'First Order Offer',
+          description: '20% off on first order',
+          code: FIRST_ORDER_PROMO_CODE,
+          discountType: 'percentage',
+          discountPercentage: 20,
+          discountValue: 20,
+          minPurchaseAmount: 0,
+          applicableProducts: [],
+        },
+      });
+    }
+
     const currentDate = new Date();
     const offer = await Offer.findOne({
-      code,
+      code: { $regex: `^${escapeRegex(normalizedCode)}$`, $options: 'i' },
       isActive: true,
       startDate: { $lte: currentDate },
       endDate: { $gte: currentDate },

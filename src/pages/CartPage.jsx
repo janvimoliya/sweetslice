@@ -1,11 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useCart } from "../hooks/useCart";
 import { Link, useNavigate } from "react-router-dom";
+import { calculateAutomaticOfferDiscount, calculateBestOfferForItem } from "../utils/offerPricing";
 import "../styles/CartPage.css";
 
 function CartPage() {
   const apiBaseUrl = "http://localhost:5000";
   const localFallbackImage = "/cake-placeholder.svg";
+  const [activeOffers, setActiveOffers] = useState([]);
   const navigate = useNavigate();
   const {
     cart,
@@ -23,6 +25,47 @@ function CartPage() {
       navigate("/login", { state: { redirectTo: "/cart" } });
     }
   }, [navigate]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadActiveOffers = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/offers/active`);
+        const result = await response.json().catch(() => ({}));
+
+        if (!isCancelled && response.ok && result?.success && Array.isArray(result?.data)) {
+          setActiveOffers(result.data);
+        }
+      } catch {
+        if (!isCancelled) {
+          setActiveOffers([]);
+        }
+      }
+    };
+
+    loadActiveOffers();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  const cartSubtotal = Number(getCartTotal() || 0);
+
+  const cartOfferSummary = useMemo(
+    () => calculateAutomaticOfferDiscount({
+      cartItems: cart,
+      offers: activeOffers,
+      subtotal: cartSubtotal,
+    }),
+    [cart, activeOffers, cartSubtotal]
+  );
+
+  const offerDiscountAmount = Number(cartOfferSummary.discountAmount || 0);
+  const discountedSubtotal = Math.max(cartSubtotal - offerDiscountAmount, 0);
+  const taxAmount = discountedSubtotal * 0.08;
+  const summaryTotal = discountedSubtotal + taxAmount;
 
   const getCartImageSrc = (item) => {
     const imageCandidateRaw =
@@ -88,6 +131,15 @@ function CartPage() {
           <div className="cart-items">
             {cart.map((item) => (
               <div key={item.id} className="cart-item">
+                {(() => {
+                  const offerMeta = calculateBestOfferForItem({
+                    item,
+                    offers: activeOffers,
+                    subtotal: cartSubtotal,
+                  });
+
+                  return (
+                    <>
                 <div className="item-image">
                   <img
                     src={getCartImageSrc(item)}
@@ -102,7 +154,15 @@ function CartPage() {
                 <div className="item-details">
                   <h5>{item.name}</h5>
                   <p className="text-muted small">{item.category}</p>
-                  <p className="item-price fw-bold">₹{item.price}</p>
+                  {offerMeta.discountAmount > 0 ? (
+                    <div className="item-price-stack">
+                      <p className="item-price-original">₹{Number(item.price || 0).toFixed(2)}</p>
+                      <p className="item-price fw-bold">₹{offerMeta.discountedUnitPrice.toFixed(2)}</p>
+                      <p className="item-offer-note">{offerMeta.offerTitle || 'Offer applied'}</p>
+                    </div>
+                  ) : (
+                    <p className="item-price fw-bold">₹{Number(item.price || 0).toFixed(2)}</p>
+                  )}
                 </div>
 
                 <div className="item-quantity">
@@ -120,7 +180,14 @@ function CartPage() {
                 </div>
 
                 <div className="item-total">
-                  <p className="fw-bold">₹{(item.price * item.quantity).toFixed(2)}</p>
+                  {offerMeta.discountAmount > 0 ? (
+                    <>
+                      <p className="item-total-original">₹{(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}</p>
+                      <p className="fw-bold">₹{offerMeta.discountedLineTotal.toFixed(2)}</p>
+                    </>
+                  ) : (
+                    <p className="fw-bold">₹{(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}</p>
+                  )}
                 </div>
 
                 <button
@@ -129,6 +196,9 @@ function CartPage() {
                 >
                   Remove
                 </button>
+                    </>
+                  );
+                })()}
               </div>
             ))}
           </div>
@@ -140,8 +210,15 @@ function CartPage() {
 
             <div className="summary-row">
               <span>Subtotal:</span>
-              <span>₹{getCartTotal().toFixed(2)}</span>
+              <span>₹{cartSubtotal.toFixed(2)}</span>
             </div>
+
+            {offerDiscountAmount > 0 && (
+              <div className="summary-row">
+                <span>Offer Discount:</span>
+                <span className="text-success">-₹{offerDiscountAmount.toFixed(2)}</span>
+              </div>
+            )}
 
             <div className="summary-row">
               <span>Shipping:</span>
@@ -150,14 +227,14 @@ function CartPage() {
 
             <div className="summary-row">
               <span>Tax:</span>
-              <span>₹{(getCartTotal() * 0.08).toFixed(2)}</span>
+              <span>₹{taxAmount.toFixed(2)}</span>
             </div>
 
             <hr />
 
             <div className="summary-row total">
               <span>Total:</span>
-              <span>₹{(getCartTotal() * 1.08).toFixed(2)}</span>
+              <span>₹{summaryTotal.toFixed(2)}</span>
             </div>
 
             <button className="btn btn-secondary-action w-100 my-3" onClick={() => navigate('/checkout')}>

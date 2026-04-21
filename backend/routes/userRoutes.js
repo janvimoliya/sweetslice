@@ -4,12 +4,14 @@ import {
   loginUser,
   forgotPassword,
   resetPassword,
+  changePassword,
   getAllUsers,
   getUserById,
   updateUser,
   deleteUser,
 } from '../controllers/User.controller.js';
 import { uploadProfilePic } from '../config/multer.js';
+import { authMiddleware } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -18,6 +20,7 @@ router.post('/register', uploadProfilePic.single('profile_picture'), registerUse
 router.post('/login', loginUser);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password/:token', resetPassword);
+router.put('/change-password', authMiddleware, changePassword);
 
 // Protected routes (add auth middleware if needed)
 router.get('/all', getAllUsers);
